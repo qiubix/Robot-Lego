@@ -1,0 +1,92 @@
+#define NEAR 8
+#define FAR 15
+#define CORRECTION 4
+#define SPEED 100
+#define LSPEED 40
+#define SO_SO_FAR 30
+#define SEC 1000
+#define LIGHT 40
+
+#define L OUT_A
+#define R OUT_B
+#define B OUT_AB
+ 
+#define LIGHT_FWD S2
+#define LIGHT_DOWN S1
+
+#define ROT_360 550
+
+int maxValue = 0;
+long rotationCounter = 0;
+
+task rotation()
+{
+	int currentValue = 0;
+	OnRev(L, 30);
+	OnFwd(R, 30);
+	while(MotorRotationCount(R) < ROT_360)
+	{		
+		currentValue = Sensor(LIGHT_FWD);
+		if(currentValue > maxValue)
+		{
+			maxValue = currentValue;
+		}
+	}
+	Off(OUT_AB);
+}
+
+task plama()
+{
+	while(true)
+	{
+		OnFwd(B, SPEED);
+		int SensorPlama = Sensor(LIGHT_DOWN);
+		NumOut(0,LCD_LINE5,SensorPlama);
+		if(SensorPlama<40)
+		{
+			Off(OUT_AB);
+			Wait(1000);
+		}
+	}
+}
+
+task reaktor()
+{
+	int SensorR = 0;
+	while(true)
+	{
+		OnRev(L, 30);
+		OnFwd(R, 30);
+		SensorR = Sensor(LIGHT_FWD);
+		NumOut(0,LCD_LINE5,SensorR);
+		if(MotorRotationCount(R) < ROT_360)
+		{
+			SensorR = Sensor(LIGHT_FWD);
+			if(SensorR > maxValue)
+			{
+				maxValue = SensorR;
+			}
+		}
+		if(MotorRotationCount(R) > ROT_360 && MotorRotationCount(R) < 2*ROT_360)
+		{
+			SensorR = Sensor(LIGHT_FWD);
+			if(SensorR > maxValue-4)
+			{
+				Off(OUT_AB);
+				Wait(1000);
+			}
+		}
+	}
+}
+
+task main()
+{
+  	//SetSensor(IN_3,SENSOR_TOUCH); // lewy
+  	//SetSensor(IN_4,SENSOR_TOUCH); // prawy
+	SetSensorLight(IN_1);
+	SetSensorLight(IN_2);
+	Precedes(reaktor);
+
+}
+
+
