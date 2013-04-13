@@ -1,0 +1,169 @@
+#define min_left 10
+#define st_left 20
+
+#define min_front 20
+
+#define sonarPrzod S1
+#define sonarLewo S4
+#define czarny S3
+#define reaktor S2
+
+#define motorLewy OUT_B
+#define motorPrawy OUT_A
+#define motorOba OUT_AB
+
+#define speed 30
+
+#define GOFORWARD 2000
+
+int max =0;
+long obrotGlob =0;
+long obrotFirst =0;
+int obrotyNaMarne =0;
+
+
+void ominPlame(){
+OnFwdSync(motorOba,speed,0);
+Wait(500);
+	OnRev(motorLewy, -30);
+	OnRev(motorPrawy, 30);
+Wait(500);
+OnRevSync(motorOba,speed,0);
+}
+
+
+
+void goForward(int x){
+
+unsigned long czas = CurrentTick();
+int SensorPrzod =0;
+int SensorPlama =0;
+OnRevSync(motorOba,speed,0);
+SensorPrzod=SensorUS(sonarPrzod);
+
+
+while(CurrentTick()-czas<x && SensorPrzod>20)
+{
+SensorPlama=Sensor(czarny);
+NumOut(0,LCD_LINE5,SensorPlama);
+if(SensorPlama<400)
+{
+ominPlame();
+}
+Wait(33);
+SensorPrzod=SensorUS(sonarPrzod);
+}
+
+if(SensorPrzod<20){
+OnFwdSync(motorOba,speed,0);
+Wait(500);
+}
+
+
+
+}
+
+
+
+void firstScan(){
+int sensorReaktor=0;
+	OnRev(motorLewy, -30);
+	OnRev(motorPrawy, 30);
+	obrotFirst=-MotorRotationCount(motorPrawy);
+	while(((-MotorRotationCount(motorPrawy))-obrotGlob)<400)
+	{
+		sensorReaktor=Sensor(reaktor);
+			if(sensorReaktor>max){
+			max=sensorReaktor;
+			}
+	}
+
+}
+int skan(){
+	int sensorReaktor=0;
+	int lewyMotor=-speed;
+	int prawyMotor=speed;
+	obrotGlob=-MotorRotationCount(motorPrawy);
+	obrotyNaMarne++;
+	OnRev(motorLewy, lewyMotor);
+	OnRev(motorPrawy, prawyMotor);
+	
+	while(((-MotorRotationCount(motorPrawy))-obrotGlob)<400)
+	{
+	sensorReaktor=Sensor(reaktor);
+		if(sensorReaktor>900)
+		{
+		Off(motorOba);
+		return 1;
+		}
+		if(sensorReaktor>max)
+		{	//Off(motorOba);
+			NumOut(0,LCD_LINE2,max);
+			max=sensorReaktor;
+			obrotyNaMarne=0;
+			NumOut(0,LCD_LINE3,max);
+			goForward(GOFORWARD);
+			break;
+		}
+	}
+	
+	if(obrotyNaMarne>2){
+	goForward(GOFORWARD);
+	max=max-150;
+	}
+
+
+return 0;	
+}
+
+task main(){
+
+
+
+	SetSensorLowspeed(IN_4);
+	ResetSensor(IN_4);
+
+        SetSensorLowspeed(IN_1);
+	ResetSensor(IN_1);
+
+	
+	SetSensorType(IN_2,SENSOR_TYPE_LIGHT_INACTIVE);
+	SetSensorMode(IN_2,SENSOR_MODE_RAW);
+	ResetSensor(IN_2);
+
+	SetSensorType(IN_3,SENSOR_TYPE_LIGHT_ACTIVE);
+	SetSensorMode(IN_3,SENSOR_MODE_RAW);
+	ResetSensor(IN_3);
+
+
+	int lewyMotor = 30;
+	int prawyMotor = -30;
+	
+	int lewaSciana = 0;
+	
+	int przodSciana = 0;
+
+	long obrotyPrawo = 0;
+	long obrotyLewo = 0; 
+	int sterowanie = 0;
+	bool sciana = false;
+	int max=0;
+	
+	OnRev(motorLewy, lewyMotor);
+	OnRev(motorPrawy, prawyMotor);
+	int i=0;
+	int stan = 0;
+	
+	firstScan();
+	while(skan()!=1){
+	
+	}
+
+
+	
+	
+	
+
+			
+
+}

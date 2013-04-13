@@ -1,0 +1,135 @@
+#define min_left 10
+#define st_left 20
+
+#define min_front 20
+
+#define sonarPrzod S1
+#define sonarLewo S4
+#define czarny S3
+#define reaktor S2
+
+#define motorLewy OUT_B
+#define motorPrawy OUT_A
+#define motorOba OUT_AB
+
+#define speed 50
+
+task main(){
+
+	SetSensorLowspeed(IN_4);
+	ResetSensor(IN_4);
+
+        SetSensorLowspeed(IN_1);
+	ResetSensor(IN_1);
+
+	int lewyMotor = 0;
+	int prawyMotor = 0;
+	
+	int lewaSciana = 0;
+	
+	int przodSciana = 0;
+
+	long obrotyPrawo = 0;
+	long obrotyLewo = 0; 
+	int sterowanie = 0;
+	bool sciana = false;
+
+	while(true){
+
+	
+
+	Wait(10);
+	TextOut(1,20,"Lewo");
+	lewaSciana=SensorUS(sonarLewo)
+	NumOut(50,20,10000+lewaSciana);
+	TextOut(1,10,"Przod");
+	przodSciana=SensorUS(sonarPrzod)
+        NumOut(50,10,10000+przodSciana);
+	sterowanie=lewaSciana/3;
+
+
+	if(przodSciana<min_front){
+		sciana = true;
+	}
+	
+	if(sciana){
+		if(obrotyPrawo==0)
+			{
+			obrotyLewo=-MotorRotationCount(motorLewy);
+			obrotyPrawo=-MotorRotationCount(motorPrawy);
+			}
+		else
+		{
+			if(-MotorRotationCount(motorLewy)-obrotyLewo<200)
+				{
+				lewyMotor=speed;
+				prawyMotor=0;
+				}
+				else
+				{
+				lewyMotor=speed;
+				prawyMotor=speed;	
+				sciana=false;
+					obrotyLewo=0;
+					obrotyPrawo=0;		
+				}
+		}
+	}
+	else
+	{
+	
+	if(lewaSciana<min_left)
+	{
+	obrotyLewo=0;
+	lewyMotor=speed+sterowanie;
+	prawyMotor=speed-sterowanie;
+	}
+	else
+	{
+		if(lewaSciana<st_left)
+		{
+		obrotyLewo=0;
+		lewyMotor=speed-sterowanie;
+		prawyMotor=speed+sterowanie;
+		}
+
+		else
+		{	
+
+
+			if(obrotyLewo==0)
+			{
+			obrotyLewo=-MotorRotationCount(motorLewy);
+			obrotyPrawo=-MotorRotationCount(motorPrawy);
+			lewyMotor=speed;
+			prawyMotor=speed;
+			NumOut(50,30,10000+obrotyLewo);
+			
+			}
+			else
+			
+			if(-MotorRotationCount(motorLewy)-obrotyLewo>150)
+			{
+				if(-MotorRotationCount(motorPrawy)-obrotyPrawo<360)
+				{
+				lewyMotor=0;
+				prawyMotor=speed;	
+				}
+				else
+				{
+				lewyMotor=speed;
+				prawyMotor=speed;	
+					obrotyLewo=0;
+					obrotyPrawo=0;		
+				}
+			}
+
+		}
+	}
+	}
+	OnRev(motorLewy, lewyMotor);
+	OnRev(motorPrawy, prawyMotor);
+	
+	}
+
+}
