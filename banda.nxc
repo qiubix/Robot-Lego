@@ -1,0 +1,62 @@
+#define NEAR 8
+#define FAR 15
+#define CORRECTION 4
+#define SPEED 100
+#define LSPEED 40
+#define SO_SO_FAR 30
+#define SEC 1000
+
+
+task test(){
+
+while(true){
+  OnFwdSync(OUT_AB, SPEED, 0);
+}
+
+}
+
+task check()
+{
+	while(true)
+	{
+		OnFwd(OUT_AB, SPEED);
+		if(SensorUS(IN_1) < NEAR){
+			//OnFwd(OUT_A, SPEED);
+			OnFwd(OUT_B, 60);
+			Wait(4);
+		}
+		if(SensorUS(IN_1) > SO_SO_FAR){
+			OnFwd(OUT_AB, LSPEED);
+			Wait(300);
+			Off(OUT_A);
+			Wait(900);
+			OnFwd(OUT_AB, SPEED);
+			Wait(500);
+		}
+		else if(SensorUS(IN_1) > FAR && SensorUS(IN_1) < SO_SO_FAR){
+			//OnFwd(OUT_B, SPEED);
+			OnFwd(OUT_A, 60);
+			Wait(4);
+		}
+		
+		if(SENSOR_3 == 1 || SENSOR_4 == 1)
+		{			
+			Off(OUT_AB);
+			OnRev(OUT_AB, LSPEED);
+			Wait(250);
+			Off(OUT_A);
+			Wait(1000);
+		}
+	}	
+		
+}
+
+task main()
+{
+	SetSensorLowspeed(IN_1); // sonar
+  	SetSensor(IN_3,SENSOR_TOUCH); // lewy
+  	SetSensor(IN_4,SENSOR_TOUCH); // prawy
+	Precedes(check);
+	//SetSensorLight(IN_2); // swiatlo
+
+}
