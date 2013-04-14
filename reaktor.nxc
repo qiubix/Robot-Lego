@@ -1,92 +1,171 @@
-#define NEAR 8
-#define FAR 15
-#define CORRECTION 4
-#define SPEED 100
-#define LSPEED 40
-#define SO_SO_FAR 30
-#define SEC 1000
-#define LIGHT 40
-
 #define L OUT_A
 #define R OUT_B
 #define B OUT_AB
  
-#define LIGHT_FWD S2
-#define LIGHT_DOWN S1
+#define REACTOR S2
+#define STAIN S1
+
+#define REACTOR_MIN 30//jakas wartosc min na reaktor
+#define REACTOR_MAX 70//wartosc swiatla przy reaktorze
+
+#define SPEED 100
+#define SPEED_360 30
+#define SPEED_TURN 40
 
 #define ROT_360 550
+#define GO_FWD 1000 // czas na jazde do przodu po obrocie przy przeszkodzie
+
+#define CORRECTION_VALUE 4
+
+#define BOTH_B 0
+#define LEFT_B 1
+#define RIGHT_B 2
 
 int maxValue = 0;
 long rotationCounter = 0;
 
-task rotation()
-{
-	int currentValue = 0;
-	OnRev(L, 30);
-	OnFwd(R, 30);
-	while(MotorRotationCount(R) < ROT_360)
-	{		
-		currentValue = Sensor(LIGHT_FWD);
-		if(currentValue > maxValue)
-		{
-			maxValue = currentValue;
-		}
-	}
-	Off(OUT_AB);
-}
-
-task plama()
-{
-	while(true)
-	{
-		OnFwd(B, SPEED);
-		int SensorPlama = Sensor(LIGHT_DOWN);
-		NumOut(0,LCD_LINE5,SensorPlama);
-		if(SensorPlama<40)
-		{
-			Off(OUT_AB);
-			Wait(1000);
-		}
-	}
-}
-
-task reaktor()
-{
-	int SensorR = 0;
-	while(true)
+void full_scan()
+{    
+    int currentValue = 0;
+    rotationCount = MotorRotationCount(R);
+    while(true)
 	{
 		OnRev(L, 30);
-		OnFwd(R, 30);
-		SensorR = Sensor(LIGHT_FWD);
-		NumOut(0,LCD_LINE5,SensorR);
-		if(MotorRotationCount(R) < ROT_360)
+		OnFwd(R, 30);        
+		currentValue = Sensor(REACTOR);
+		if(MotorRotationCount(R) - rotationCount < ROT_360)
 		{
-			SensorR = Sensor(LIGHT_FWD);
-			if(SensorR > maxValue)
+			currentValue = Sensor(REACTOR);
+			if(currentValue > maxValue)
 			{
-				maxValue = SensorR;
+				maxValue = currentValue;
 			}
 		}
-		if(MotorRotationCount(R) > ROT_360 && MotorRotationCount(R) < 2*ROT_360)
+		if(MotorRotationCount(R) - rotationCount > ROT_360 && MotorRotationCount(R) - rotationCount < 2*ROT_360)
 		{
-			SensorR = Sensor(LIGHT_FWD);
-			if(SensorR > maxValue-4)
+			currentValue = Sensor(REACTOR);
+			if(currentValue > maxValue - CORRECTION_VALUE)
 			{
-				Off(OUT_AB);
-				Wait(1000);
+				Off(B);
+                rotationCount = MotorRotationCount(R);
+				return;
 			}
 		}
 	}
+}
+
+bool is_stain(){
+    int stain = 0;
+    stain = Sensor(STAIN);
+    if(stain > 40){
+        return true
+    }
+    else return false;
+}
+
+int check_bumpers(){
+    if(SENSOR_3 == 1 && SENSOR_4 == 1){
+        return 0;
+    }
+    else if(SENSOR_3 == 1 && SENSOR_4 == 0){
+        return 1;
+    }
+    else if(SENSOR_3 == 0 && SENSOR_4 == 1){
+        return 2;
+    }
+    else return 3;
+}
+
+void ride_forward(int time){
+    rotationCounter = MotorRotationCounter(R);//////problem gdzie to zmiescic zeby to czytal raz przed obrotem
+    unsignnd long start_time = CurrentTick();
+    while(CurrentTick() - start_time < time){
+        OnFwd(B, SPEED);
+        if(is_stain()){
+            Off(B);
+            OnRev(R, SPEED_TURN);
+            Wait(300);
+            OnFwd(B, SPEED);
+            Wait(GO_FWD);
+            full_scan();
+        }
+        switch (check_bumpers()){
+            case LEFT_B: 
+                Off(B);
+    		    OnRev(B, SPEED_TURN);
+			    Wait(150);
+			    Off(L);
+			    Wait(300);
+                OnFwd(B, SPEED);
+                Wait(GO_FWD);
+                full_scan();
+            case RIGHT_B:
+                Off(B);
+        	    OnRev(B, SPEED_TURN);
+			    Wait(150);
+			    Off(R);
+			    Wait(300);
+                OnFwd(B, SPEED);
+                Wait(GO_FWD);
+                full_scan();
+            case BOTH_B: 
+                Off(B);
+                OnRev(B, SPEED_TURN);
+                Wait(250);
+                Off(L);
+                Wait(1000);
+                OnFwd(B, SPEED);
+                Wait(GO_FWD);
+                full_scan();
+            default: break;
+        }
+        if(Sensor(REACTOR) > REACTOR_MAX){
+            Off(B); // koniec
+        }        
+    rotationCounter = MotorRotationCounter(R);
+    }
+}
+
+void scan(){
+    int currentValue = 0;
+    int currentRotation = 0;
+    OnRev(L, 30);
+    OnFwd(R, 30);        
+    currentValue = Sensor(REACTOR);
+    currentRotation = MotorRotationCount(R);
+    while(currentRotation - rotationCounter < ROT_360)
+	{
+		currentValue = Sensor(REACTOR);
+		if(currentValue > maxValue - CORRECTION_VALUE) /////////czy to zadziala?!!!!
+		{
+			Off(B);
+            maxValue = currentValue;
+            return;
+		}
+        currentRotation = MotorRotationCount(R);
+	}
+}
+
+task reactor()
+{
+    int currentValue = 0;
+    currentValue = Sensor(REACTOR);
+    if(currentValue > REACTOR_MIN){
+        maxValue = currentValue;
+        ride_forward();
+    }
+    full_scan();
+    while(true){
+        ride_forward();
+        scan();
+    }
 }
 
 task main()
 {
-  	//SetSensor(IN_3,SENSOR_TOUCH); // lewy
-  	//SetSensor(IN_4,SENSOR_TOUCH); // prawy
-	SetSensorLight(IN_1);
-	SetSensorLight(IN_2);
-	Precedes(reaktor);
-
+    SetSensor(IN_3,SENSOR_TOUCH); // lewy
+  	SetSensor(IN_4,SENSOR_TOUCH); // prawy
+	SetSensorLight(IN_1); // swiatlo w dol
+	SetSensorLight(IN_2); // swiatlo do przodu
+	Precedes(reactor);
 }
-
-
